@@ -11,3 +11,19 @@ function remaining(load){if(load.stage!==1)return load.stage===4?'All done':load
 function render(){ $('active').textContent=loads.filter(l=>l.stage<3).length;$('ready').textContent=loads.filter(l=>l.stage===3).length;$('done').textContent=loads.filter(l=>l.stage===4).length;const list=$('loads');list.replaceChildren();const visible=loads.filter(l=>filter==='all'||(filter==='done'?l.stage===4:l.stage<4));if(!visible.length){const empty=element('div','empty');empty.append(element('strong','',filter==='done'?'No finished loads yet.':'Your laundry board is clear.'),element('span','','Add a load to start tracking.'));list.append(empty)}for(const load of visible){const card=element('article','load'),top=element('div','load-top'),info=element('div','info');info.append(element('strong','',load.name),element('small','',load.type));const del=element('button','delete','×');del.setAttribute('aria-label','Delete '+load.name);del.onclick=()=>{loads=loads.filter(l=>l.id!==load.id);save();announce('Load removed')};top.append(element('div','symbol',load.stage===4?'✓':'◉'),info,del);const progress=element('div','progress'),bar=element('span');bar.style.width=(load.stage/4*100)+'%';progress.append(bar);const bottom=element('div','load-bottom'),time=element('span','time',remaining(load));time.dataset.timer=load.id;bottom.append(time);if(load.stage<4){const next=element('button','next',['Start wash','Move to drying','Ready to fold','Mark finished'][load.stage]);next.onclick=()=>{load.stage++;if(load.stage===1)load.started=Date.now();save();announce(stages[load.stage])};bottom.append(next)}card.append(top,element('span','status',stages[load.stage]),progress,bottom);list.append(card)}}
 $('form').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.target),name=String(f.get('name')).trim();if(!name){e.target.elements.name.setCustomValidity('Enter a load name.');e.target.elements.name.reportValidity();return}loads.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2),name,type:String(f.get('type')),minutes:Number(f.get('minutes')),stage:0,started:null});save();e.target.reset();announce('Added to your basket')});$('form').elements.name.addEventListener('input',e=>e.target.setCustomValidity(''));
 document.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>{filter=b.dataset.filter;document.querySelectorAll('[data-filter]').forEach(x=>{x.classList.toggle('selected',x===b);x.setAttribute('aria-pressed',String(x===b))});render()}));$('date').textContent=new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'});setInterval(()=>{document.querySelectorAll('[data-timer]').forEach(n=>{const l=loads.find(x=>x.id===n.dataset.timer);if(l)n.textContent=remaining(l)})},1000);render();
+
+const themeQuery=window.matchMedia('(prefers-color-scheme: dark)');
+let themePreference;
+try{themePreference=localStorage.getItem('laundry-loop-theme')}catch{}
+function applyTheme(theme){
+ document.documentElement.dataset.theme=theme;
+ $('theme-toggle').setAttribute('aria-pressed',String(theme==='dark'));
+ document.querySelector('meta[name="theme-color"]').content=theme==='dark'?'#111b29':'#203955';
+}
+applyTheme(document.documentElement.dataset.theme);
+$('theme-toggle').addEventListener('click',()=>{
+ themePreference=document.documentElement.dataset.theme==='dark'?'light':'dark';
+ applyTheme(themePreference);
+ try{localStorage.setItem('laundry-loop-theme',themePreference)}catch{}
+});
+themeQuery.addEventListener('change',e=>{if(themePreference!=='dark'&&themePreference!=='light')applyTheme(e.matches?'dark':'light')});
